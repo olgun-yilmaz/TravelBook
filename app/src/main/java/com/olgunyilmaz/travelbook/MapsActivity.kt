@@ -1,6 +1,7 @@
 package com.olgunyilmaz.travelbook
 
 import android.Manifest
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
@@ -22,13 +23,18 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.snackbar.Snackbar
 import com.olgunyilmaz.travelbook.databinding.ActivityMapsBinding
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLongClickListener {
 
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
     private lateinit var locationManager : LocationManager
     private lateinit var locationListener: LocationListener
     private lateinit var permissionLauncher: ActivityResultLauncher<String>
+    private lateinit var sharedPreferences: SharedPreferences
+
+    var trackBoolean : Boolean? = null
+    private var selectedLongitude : Double? = 0.0
+    private var selectedLatitude : Double? = 0.0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,20 +47,27 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mapFragment.getMapAsync(this)
 
         registerLauncher()
+
+        sharedPreferences = this.getSharedPreferences("com.olgunyilmaz.travelbook", MODE_PRIVATE)
     }
 
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap // 40.98781794724289, 29.036847381117376 : saracoglu
+        mMap.setOnMapLongClickListener(this@MapsActivity)
 
         // casting
         locationManager = this.getSystemService(LOCATION_SERVICE) as LocationManager
 
         locationListener = object : LocationListener{
             override fun onLocationChanged(location: Location) {
-                val userLoc = LatLng(location.latitude,location.longitude)
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userLoc,15f))
-                mMap.addMarker(MarkerOptions().position(userLoc).title("Current Location"))
+                trackBoolean = sharedPreferences.getBoolean("trackBoolean",false)
+                if (! trackBoolean!!){
+                    val userLoc = LatLng(location.latitude,location.longitude)
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userLoc,15f))
+                    mMap.addMarker(MarkerOptions().position(userLoc).title("Current Location"))
+                    sharedPreferences.edit().putBoolean("trackBoolean",true).apply()
+                }
             }
 
         }
@@ -92,9 +105,24 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }else{
             // permission granted
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
-                1000,10f,locationListener)
+                100,10f,locationListener)
+            val lastLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+
+            if (lastLocation != null) {
+                val lastUserLoc = LatLng(lastLocation.latitude,lastLocation.longitude)
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(lastUserLoc,15f))
+                mMap.isMyLocationEnabled = true
+            }
         }
 
+    }
+
+    override fun onMapLongClick(p0: LatLng) {
+        mMap.clear()
+        mMap.addMarker(MarkerOptions().position(p0))
+
+        selectedLatitude = p0.latitude
+        selectedLongitude = p0.longitude
     }
 
 }
