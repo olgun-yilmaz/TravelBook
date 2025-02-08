@@ -1,6 +1,7 @@
 package com.olgunyilmaz.travelbook
 
 import android.Manifest
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.location.Location
@@ -8,6 +9,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -123,6 +125,21 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
 
         selectedLatitude = p0.latitude
         selectedLongitude = p0.longitude
+    }
+
+    fun save(view : View){
+        println("saved")
+        goToMainActivity()
+    }
+
+    fun delete(view : View){
+        println("deleted")
+        goToMainActivity()
+    }
+
+    fun goToMainActivity(){
+        val intent = Intent(this@MapsActivity,MainActivity :: class.java)
+        startActivity(intent)
     }
 
 }
