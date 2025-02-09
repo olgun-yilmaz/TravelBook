@@ -45,9 +45,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
     private lateinit var placeDAO: PlaceDAO
     private lateinit var compositeDisposable: CompositeDisposable
 
+
     var trackBoolean : Boolean? = null
     private var selectedLongitude : Double? = 0.0
     private var selectedLatitude : Double? = 0.0
+    private var placeFromMain : Place? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,6 +68,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
 
         db = Room.databaseBuilder(applicationContext,PlaceDatabase ::class.java, "Places").build()
         placeDAO = db.placeDao()
+
+        binding.saveButton.isEnabled = false
     }
 
 
@@ -73,26 +77,47 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
         mMap = googleMap // 40.98781794724289, 29.036847381117376 : saracoglu
         mMap.setOnMapLongClickListener(this@MapsActivity)
 
-        // casting
-        locationManager = this.getSystemService(LOCATION_SERVICE) as LocationManager
+        val info = intent.getStringExtra("info")
 
-        locationListener = object : LocationListener{
-            override fun onLocationChanged(location: Location) {
-                trackBoolean = sharedPreferences.getBoolean("trackBoolean",false)
-                if (! trackBoolean!!){
-                    val userLoc = LatLng(location.latitude,location.longitude)
-                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userLoc,15f))
-                    mMap.addMarker(MarkerOptions().position(userLoc).title("Current Location"))
-                    sharedPreferences.edit().putBoolean("trackBoolean",true).apply()
-                }
+        if(info.equals("old")){
+            mMap.clear()
+            placeFromMain = intent.getSerializableExtra("selectedPlace") as? Place
+
+            placeFromMain?.let { place ->
+                val latlng = LatLng(place.latitude, place.longitude)
+                mMap.addMarker(MarkerOptions().position(latlng).title(place.name))
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng,15f))
+
+                binding.placeNameText.setText(place.name)
+
+                binding.deleteButton.visibility = View.VISIBLE
+                binding.saveButton.visibility = View.GONE
+
             }
 
+        }else{ // new
+            binding.saveButton.visibility = View.VISIBLE
+            binding.deleteButton.visibility = View.GONE
+
+            // casting
+            locationManager = this.getSystemService(LOCATION_SERVICE) as LocationManager
+
+            locationListener = object : LocationListener{
+                override fun onLocationChanged(location: Location) {
+                    trackBoolean = sharedPreferences.getBoolean("trackBoolean",false)
+                    if (! trackBoolean!!){
+                        val userLoc = LatLng(location.latitude,location.longitude)
+                        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userLoc,15f))
+                        mMap.addMarker(MarkerOptions().position(userLoc).title("Current Location"))
+                        sharedPreferences.edit().putBoolean("trackBoolean",true).apply()
+                    }
+                }
+
+            }
+
+            requestPermission()
+
         }
-
-        requestPermission()
-
-
-
     }
 
     private fun registerLauncher(){
@@ -135,6 +160,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
     }
 
     override fun onMapLongClick(p0: LatLng) {
+        binding.saveButton.isEnabled = true
+
         mMap.clear()
         mMap.addMarker(MarkerOptions().position(p0))
 
@@ -162,7 +189,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
     }
 
     fun delete(view : View){
-        println("deleted")
+
+        placeFromMain?.let { place ->
+
+            compositeDisposable.add(
+                placeDAO.delete(place)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(this@MapsActivity :: handleResponse)
+            )
+
+        }
+
         handleResponse()
     }
 

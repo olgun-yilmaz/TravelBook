@@ -3,6 +3,7 @@ package com.olgunyilmaz.travelbook.model
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.io.Serializable
 
 @Entity
 class Place(
@@ -16,7 +17,7 @@ class Place(
     @ColumnInfo("longitude")
     var longitude : Double
 
-    ) {
+    ) : Serializable  {
 
     @PrimaryKey(autoGenerate = true)
     var id = 0

@@ -27,6 +27,8 @@ class TravelAdapter (val travelList : List<Place>) : RecyclerView.Adapter<Travel
         holder.binding.recyclerViewtextView.text = travelList[position].name
         holder.itemView.setOnClickListener {
             val intent = Intent(holder.itemView.context, MapsActivity :: class.java)
+            intent.putExtra("selectedPlace",travelList[position])
+            intent.putExtra("info","old")
             holder.itemView.context.startActivity(intent)
         }
     }
