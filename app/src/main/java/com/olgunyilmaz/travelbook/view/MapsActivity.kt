@@ -1,4 +1,4 @@
-package com.olgunyilmaz.travelbook
+package com.olgunyilmaz.travelbook.view
 
 import android.Manifest
 import android.content.Intent
@@ -15,6 +15,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.room.Room
 
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -23,7 +24,11 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.snackbar.Snackbar
+import com.olgunyilmaz.travelbook.R
 import com.olgunyilmaz.travelbook.databinding.ActivityMapsBinding
+import com.olgunyilmaz.travelbook.model.Place
+import com.olgunyilmaz.travelbook.roomdb.PlaceDAO
+import com.olgunyilmaz.travelbook.roomdb.PlaceDatabase
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLongClickListener {
 
@@ -33,6 +38,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
     private lateinit var locationListener: LocationListener
     private lateinit var permissionLauncher: ActivityResultLauncher<String>
     private lateinit var sharedPreferences: SharedPreferences
+    private lateinit var db : PlaceDatabase
+    private lateinit var placeDAO: PlaceDAO
 
     var trackBoolean : Boolean? = null
     private var selectedLongitude : Double? = 0.0
@@ -51,6 +58,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
         registerLauncher()
 
         sharedPreferences = this.getSharedPreferences("com.olgunyilmaz.travelbook", MODE_PRIVATE)
+
+        db = Room.databaseBuilder(applicationContext,PlaceDatabase ::class.java, "Places").build()
+        placeDAO = db.placeDao()
     }
 
 
@@ -128,8 +138,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
     }
 
     fun save(view : View){
-        println("saved")
-        goToMainActivity()
+        if (selectedLongitude != null && selectedLatitude != null){
+            val name = binding.placeNameText.text.toString()
+            val place = Place(name,selectedLatitude!!,selectedLongitude!!)
+            placeDAO.insert(place)
+            goToMainActivity()
+        }
+
+
     }
 
     fun delete(view : View){
@@ -138,7 +154,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
     }
 
     fun goToMainActivity(){
-        val intent = Intent(this@MapsActivity,MainActivity :: class.java)
+        val intent = Intent(this@MapsActivity, MainActivity :: class.java)
         startActivity(intent)
     }
 
