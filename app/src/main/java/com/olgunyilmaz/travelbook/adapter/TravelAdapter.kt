@@ -8,7 +8,7 @@ import com.olgunyilmaz.travelbook.view.MapsActivity
 import com.olgunyilmaz.travelbook.databinding.RecyclerRowBinding
 import com.olgunyilmaz.travelbook.model.Place
 
-class TravelAdapter (val travelList : ArrayList<Place>) : RecyclerView.Adapter<TravelAdapter.TravelHolder>()   {
+class TravelAdapter (val travelList : List<Place>) : RecyclerView.Adapter<TravelAdapter.TravelHolder>()   {
 
     class TravelHolder(val binding : RecyclerRowBinding) : RecyclerView.ViewHolder(binding.root) {
 

@@ -29,6 +29,9 @@ import com.olgunyilmaz.travelbook.databinding.ActivityMapsBinding
 import com.olgunyilmaz.travelbook.model.Place
 import com.olgunyilmaz.travelbook.roomdb.PlaceDAO
 import com.olgunyilmaz.travelbook.roomdb.PlaceDatabase
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.disposables.CompositeDisposable
+import io.reactivex.rxjava3.schedulers.Schedulers
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLongClickListener {
 
@@ -40,6 +43,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var db : PlaceDatabase
     private lateinit var placeDAO: PlaceDAO
+    private lateinit var compositeDisposable: CompositeDisposable
 
     var trackBoolean : Boolean? = null
     private var selectedLongitude : Double? = 0.0
@@ -58,6 +62,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
         registerLauncher()
 
         sharedPreferences = this.getSharedPreferences("com.olgunyilmaz.travelbook", MODE_PRIVATE)
+        compositeDisposable = CompositeDisposable()
 
         db = Room.databaseBuilder(applicationContext,PlaceDatabase ::class.java, "Places").build()
         placeDAO = db.placeDao()
@@ -138,11 +143,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
     }
 
     fun save(view : View){
+
+        // main thread ui / default thread -> CPU, I/O Thread Internet/Database
+
         if (selectedLongitude != null && selectedLatitude != null){
             val name = binding.placeNameText.text.toString()
             val place = Place(name,selectedLatitude!!,selectedLongitude!!)
-            placeDAO.insert(place)
-            goToMainActivity()
+            compositeDisposable.add(
+                placeDAO.insert(place)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(this@MapsActivity :: handleResponse)
+            )
+
         }
 
 
@@ -150,12 +163,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
 
     fun delete(view : View){
         println("deleted")
-        goToMainActivity()
+        handleResponse()
     }
 
-    fun goToMainActivity(){
+    fun handleResponse(){
         val intent = Intent(this@MapsActivity, MainActivity :: class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         startActivity(intent)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        compositeDisposable.clear()
     }
 
 }
